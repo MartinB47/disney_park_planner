@@ -25,7 +25,10 @@ if st.session_state.user_loc is None:
         st.session_state.location_set = True
         st.session_state.latitude = lat
         st.session_state.longitude = lon
-        
+
+# Set location set variable to true anyways
+st.session_state.location_set = True
+
 # — build map, centering & dropping marker if we have coords —
 def make_map(user_loc=None):
     fig = px.scatter_mapbox(
