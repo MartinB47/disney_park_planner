@@ -1,35 +1,71 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect, useRef } from "react";
 
-function App() {
-  const [count, setCount] = useState(0)
+function useLivePosition(options = { enableHighAccuracy: true }) {
+  const [position, setPosition] = useState(null);
+  const [error, setError] = useState(null);
+  const watcherId = useRef(null);
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setError(new Error("Geolocation not supported"));
+      return;
+    }
+
+    // ask permission & get initial position
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setPosition({
+          lat: coords.latitude,
+          lon: coords.longitude,
+          timestamp: coords.timestamp
+        });
+
+        //start watching continuously
+        watcherId.current = navigator.geolocation.watchPosition(
+          ({ coords }) => {
+            setPosition({
+              lat: coords.latitude,
+              lon: coords.longitude,
+              timestamp: coords.timestamp
+            });
+          },
+          (err) => setError(err),
+          options
+        );
+      },
+      (err) => {
+        // User denied or another error
+        setError(err);
+      },
+      options
+    );
+
+    // Cleanup on unmount
+    return () => {
+      if (watcherId.current != null) {
+        navigator.geolocation.clearWatch(watcherId.current);
+      }
+    };
+  }, [options]);
+
+  return { position, error };
 }
 
-export default App
+// Example usage in a component
+export default function App() {
+  const { position, error } = useLivePosition();
+
+  if (error){
+    return <div>Error: {error.message}</div>;
+  }
+  if (!position){
+    return <div>Waiting for location permission…</div>;
+  }
+
+  return (
+    <div>
+      <p>Lat: {position.lat}</p>
+      <p>Lon: {position.lon}</p>
+    </div>
+  );
+}
