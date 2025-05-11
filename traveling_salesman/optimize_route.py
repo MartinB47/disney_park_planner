@@ -10,58 +10,62 @@ from itertools import combinations
 
 # AWS clients
 dynamodb = boto3.resource("dynamodb")
-table     = dynamodb.Table(os.getenv("RIDES_TABLE", "rideMetaData"))
+table = dynamodb.Table(os.getenv("RIDES_TABLE", "rideMetaData"))
 
-location  = boto3.client("location")               # Amazon Location Service
+location = boto3.client("location")  # Amazon Location Service
 
 # ------------------------------------------------------------------------------
 # 1. Data access helpers
 # ------------------------------------------------------------------------------
 
+
 def load_rides(ride_ids):
     """Batch-read ride metadata + current wait from DynamoDB."""
     keys = [{"rideId": rid} for rid in ride_ids]
-    response = table.batch_get_items(RequestItems={
-        table.name: {"Keys": keys}
-    })
+    response = dynamodb.batch_get_item(RequestItems={table.name: {"Keys": keys}})
     items = response["Responses"][table.name]
     # Decimal → float
     for it in items:
-        it["lat"]      = float(it["lat"])
-        it["lon"]      = float(it["lon"])
+        it["lat"] = float(it["lat"])
+        it["lon"] = float(it["lon"])
         it["waitTime"] = int(it.get("waitTime", 0))
     # Preserve original order supplied by the user
     by_id = {it["rideId"]: it for it in items}
     return [by_id[rid] for rid in ride_ids if rid in by_id]
 
+
 def minutes_from_seconds(seconds):
-    return seconds / 60.0         # Amazon Location returns seconds
+    return seconds / 60.0  # Amazon Location returns seconds
+
 
 def build_distance_matrix(start, rides):
     """Return an (n+1)×(n+1) walking-time matrix in minutes.
-       Row/col 0 == guest position; 1..n == rides in order."""
-    coords = [start] + [(r["lat"], r["lon"]) for r in rides]
-    
+    Row/col 0 == guest position; 1..n == rides in order."""
+    # Amazon Location Service expects [longitude, latitude] format
+    coords = [(start[1], start[0])] + [(r["lon"], r["lat"]) for r in rides]
+
     # Amazon Location accepts up to 350×350 pairs in one request
     result = location.calculate_route_matrix(
-        CalculatorName="DisneyWalk",
-        DeparturePositions=[coords[0]],
-        DestinationPositions=coords,
-        TravelMode="Walking"
+        CalculatorName="Disney-Walk-Route-Calculator",
+        DeparturePositions=coords[0:1],  # First coordinate as departure
+        DestinationPositions=coords,  # All coordinates as destinations
+        TravelMode="Walking",
     )
 
     n = len(coords)
     D = [[0.0] * n for _ in range(n)]
-    
+
     # result["RouteMatrix"][i][j] = seconds from i→j, NaN if not routable
     for i, row in enumerate(result["RouteMatrix"]):
         for j, cell in enumerate(row):
             D[i][j] = minutes_from_seconds(cell["DurationSeconds"])
     return D
 
+
 # ------------------------------------------------------------------------------
 # 2. Held–Karp exact TSP with service-time weights
 # ------------------------------------------------------------------------------
+
 
 def held_karp(D, waits):
     """
@@ -70,12 +74,12 @@ def held_karp(D, waits):
     waits :: length n+1, waits[0]==0, waits[i] == queue minutes at ride i.
     Returns (best_order, best_total_time)
     """
-    n = len(waits) - 1            # rides only
-    FULL = 1 << n                 # bit mask size
+    n = len(waits) - 1  # rides only
+    FULL = 1 << n  # bit mask size
 
     # dp[mask][i] = best time to reach set 'mask', ending at ride i (1-based)
-    dp   = [[float("inf")] * (n + 1) for _ in range(FULL)]
-    prev = [[None] * (n + 1)       for _ in range(FULL)]
+    dp = [[float("inf")] * (n + 1) for _ in range(FULL)]
+    prev = [[None] * (n + 1) for _ in range(FULL)]
 
     # Initialise: go from start (0) straight to each ride i
     for i in range(1, n + 1):
@@ -83,17 +87,20 @@ def held_karp(D, waits):
         dp[mask][i] = D[0][i] + waits[i]
 
     # Main DP
-    for size in range(2, n + 1):                  # subset sizes
+    for size in range(2, n + 1):  # subset sizes
         for subset in combinations(range(1, n + 1), size):
             mask = sum(1 << (i - 1) for i in subset)
-            for j in subset:                      # j = last ride in subset
+            for j in subset:  # j = last ride in subset
                 prev_mask = mask ^ (1 << (j - 1))
-                best = float("inf"); best_k = None
-                for k in subset:                  # k = ride before j
-                    if k == j: continue
+                best = float("inf")
+                best_k = None
+                for k in subset:  # k = ride before j
+                    if k == j:
+                        continue
                     cand = dp[prev_mask][k] + D[k][j] + waits[j]
                     if cand < best:
-                        best = cand; best_k = k
+                        best = cand
+                        best_k = k
                 dp[mask][j] = best
                 prev[mask][j] = best_k
 
@@ -113,9 +120,11 @@ def held_karp(D, waits):
     order.reverse()
     return order, best_time
 
+
 # ------------------------------------------------------------------------------
 # 3. Public function
 # ------------------------------------------------------------------------------
+
 
 def optimize_route(user_lat, user_lon, ride_ids):
     """
@@ -141,21 +150,22 @@ def optimize_route(user_lat, user_lon, ride_ids):
     # -- Held–Karp -------------------------------------------------------------
     order_idx, total = held_karp(D, waits)
 
-    ordered_rides = [rides[i - 1] for i in order_idx]   # shift back (1-based)
+    ordered_rides = [rides[i - 1] for i in order_idx]  # shift back (1-based)
 
     return {
         "orderedRides": [
             {
                 "rideId": r["rideId"],
-                "name":   r["name"],
-                "lat":    r["lat"],
-                "lon":    r["lon"],
-                "waitTime": r["waitTime"]
+                "name": r["name"],
+                "lat": r["lat"],
+                "lon": r["lon"],
+                "waitTime": r["waitTime"],
             }
             for r in ordered_rides
         ],
-        "totalTimeMinutes": round(total, 1)
+        "totalTimeMinutes": round(total, 1),
     }
+
 
 # ------------------------------------------------------------------------------
 # Example local test -----------------------------------------------------------
@@ -165,6 +175,19 @@ if __name__ == "__main__":
     rides = [
         "c23af6ba-8515-406a-8a48-d0818ba0bfc9",  # Peter Pan's Flight
         "9d401ad3-49b2-469f-ac73-93eb429428fb",  # Mr. Toad's Wild Ride
-        "90ee50d4-7cc9-4824-b29d-2aac801acc29"   # Pinocchio's Daring Journey
+        "90ee50d4-7cc9-4824-b29d-2aac801acc29",  # Pinocchio's Daring Journey
     ]
-    print(optimize_route(start_lat, start_lon, rides))
+
+    # Run the optimization and print the result in a nicely formatted way
+    import json
+
+    result = optimize_route(start_lat, start_lon, rides)
+    print(json.dumps(result, indent=4))
+
+    # Also print a summary in a more readable format
+    print("\n--- Optimized Route Summary ---")
+    print(f"Starting position: ({start_lat}, {start_lon})")
+    print(f"Total time: {result['totalTimeMinutes']} minutes")
+    print("Route order:")
+    for i, ride in enumerate(result["orderedRides"], 1):
+        print(f"  {i}. {ride['name']} - Wait time: {ride['waitTime']} min")
