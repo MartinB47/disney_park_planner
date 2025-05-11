@@ -149,7 +149,7 @@ if st.button("Optimize My Route", type="primary", use_container_width=True):
         progress_bar = st.progress(0)
         for i in range(100):
             # Simulate progress while waiting for API
-            time.sleep(0.03)
+            time.sleep(0.02)
             progress_bar.progress(i + 1)
         
         optimization_result = optimize_routes(
@@ -187,13 +187,13 @@ if st.button("Optimize My Route", type="primary", use_container_width=True):
             # Display statistics in cards
             st.markdown('<div class="stats-container">', unsafe_allow_html=True)
             
-            # Total time
-            st.markdown(f'''
-            <div class="stat-card">
-                <div class="stat-value">{format_duration(total_time_minutes)}</div>
-                <div class="stat-label">Total Experience Time</div>
-            </div>
-            ''', unsafe_allow_html=True)
+            # # Total time
+            # st.markdown(f'''
+            # <div class="stat-card">
+            #     <div class="stat-value">{format_duration(total_time_minutes)}</div>
+            #     <div class="stat-label">Total Experience Time</div>
+            # </div>
+            # ''', unsafe_allow_html=True)
             
             # Total wait time
             st.markdown(f'''
