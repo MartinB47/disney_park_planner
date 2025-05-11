@@ -6,10 +6,10 @@ def initialize_session_state():
         st.session_state.location_set = False
     
     if "latitude" not in st.session_state:
-        st.session_state.latitude = 33.4843  # Default to Disneyland Anaheim
+        st.session_state.latitude = 33.8121  # Default to Disneyland Anaheim
     
     if "longitude" not in st.session_state:
-        st.session_state.longitude = -117.5508  # Default to Disneyland Anaheim
+        st.session_state.longitude = -117.919  # Default to Disneyland Anaheim
     
     if "all_rides" not in st.session_state:
         st.session_state.all_rides = []
