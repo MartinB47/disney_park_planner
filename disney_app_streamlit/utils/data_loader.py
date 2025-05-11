@@ -1,12 +1,14 @@
 import boto3
+from botocore.exceptions import ClientError
 
-def get_all_ride_names_from_dynamodb():
+def get_all_rides():
     """
-    Retrieves all ride names from the rideMetaData DynamoDB table and returns them as JSON.
+    Mock function to get all rides (replace with your actual DynamoDB function)
     """
     try:
-        # Initialize DynamoDB client
-        dynamodb = boto3.resource('dynamodb')
+        # Initialize DynamoDB client with explicit region
+        session = boto3.Session(region_name='us-west-2')  # Replace with your region
+        dynamodb = session.resource('dynamodb')
         
         # Reference the table
         table = dynamodb.Table('rideMetaData')
@@ -22,8 +24,8 @@ def get_all_ride_names_from_dynamodb():
             response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
             items.extend(response['Items'])
         
-        # Extract just the ride names (assuming each item has a 'rideName' attribute)
-        ride_names = [item.get('name') for item in items if 'name' in item]
+        # Extract just the ride names
+        ride_names = [item.get('rideName') for item in items if 'rideName' in item]
         
         # Create the JSON response
         result = {
@@ -34,8 +36,16 @@ def get_all_ride_names_from_dynamodb():
         
         return result
     
+    except ClientError as e:
+        # Handle AWS-specific errors
+        error_result = {
+            "status": "error",
+            "message": str(e),
+            "error_code": e.response['Error']['Code'] if 'Error' in e.response else "Unknown"
+        }
+        return error_result
     except Exception as e:
-        # Handle any errors
+        # Handle any other errors
         error_result = {
             "status": "error",
             "message": str(e)

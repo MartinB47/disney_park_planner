@@ -1,14 +1,34 @@
-import boto3
-import json
 import streamlit as st
-from get_rides import get_all_ride_names_from_dynamodb
+import json
+import sys
+import os
+import logging
 
-# Page configuration for better appearance
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Set page configuration at the very beginning
 st.set_page_config(
     page_title="Disneyland Ride Planner",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# Add the root directory to sys.path to enable imports from utils
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.get_rides import get_all_ride_names_from_dynamodb
+from utils.session import initialize_session_state
+
+# Initialize session state
+initialize_session_state()
+
+# Check if location is set
+if not st.session_state.get("location_set"):
+    st.warning("⚠️ Please set your location first!")
+    if st.button("Go to Location Page"):
+        st.switch_page("pages/1_Location.py")
+    st.stop()
 
 # Custom CSS for better styling
 st.markdown("""
@@ -38,16 +58,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
-if 'all_rides' not in st.session_state:
-    st.session_state.all_rides = []
+# Main app header
+st.title("🎢 Disneyland Ride Planner")
+st.write(f"Planning your visit from coordinates: ({st.session_state.latitude:.6f}, {st.session_state.longitude:.6f})")
+
+# Load rides if not already loaded
+if 'all_rides' not in st.session_state or not st.session_state.all_rides:
     with st.spinner("Loading rides..."):
+        st.info("Connecting to database to fetch rides...")
         result = get_all_ride_names_from_dynamodb()
+        
         if result.get("status") == "success":
             st.session_state.all_rides = sorted(result['rides'])
+            st.success(f"Successfully loaded {len(st.session_state.all_rides)} rides!")
         else:
             st.error(f"Error loading rides: {result.get('message')}")
             st.session_state.all_rides = []
+
+# For debugging
+st.write(f"Total rides loaded: {len(st.session_state.all_rides)}")
 
 if 'selected_rides' not in st.session_state:
     st.session_state.selected_rides = []
