@@ -3,6 +3,11 @@ import boto3
 from decimal import Decimal
 from itertools import combinations
 import json
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 
 # AWS clients
 dynamodb = boto3.resource("dynamodb")
@@ -21,11 +26,14 @@ def lambda_handler(event, context):
     }
     """
     try:
-        # Parse input parameters
-        body = event
-        if not isinstance(body, dict) and isinstance(event, str):
-            body = json.loads(event)
+        # Check if API Gateway proxy integration was used:
+        if "body" in event:
+            # The body is a JSON string, so parse it.
+            body = json.loads(event["body"])
+        else:
+            body = event
 
+        # Parse input parameters
         user_lat = float(body.get("latitude", 0))
         user_lon = float(body.get("longitude", 0))
         ride_ids = body.get("rideIds", [])
@@ -36,7 +44,6 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "body": json.dumps({"error": "No ride IDs provided"}),
             }
-
         if user_lat == 0 or user_lon == 0:
             return {
                 "statusCode": 400,
