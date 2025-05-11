@@ -79,7 +79,7 @@ st.write("Plan your perfect Disney day with our intelligent route optimizer! Fol
 st.markdown("""
 <div class="step-card">
     <div class="step-number">Step 1</div>
-    <div class="step-title">📍 Set Your Location</div>
+    <div class="step-title" style="color: purple;">📍 Set Your Location</div>  <!-- Color changed to purple -->
     <div class="step-description">
         Start by providing your current location or where you plan to start your Disney adventure. 
         This helps us calculate the optimal route for your visit.
@@ -88,7 +88,7 @@ st.markdown("""
 
 <div class="step-card">
     <div class="step-number">Step 2</div>
-    <div class="step-title">🎢 Select Your Rides</div>
+    <div class="step-title" style="color: purple;">🎢 Select Your Rides</div>
     <div class="step-description">
         Choose the attractions you want to experience during your visit. 
         Search for rides by name or browse the complete list to create your perfect Disney day.
@@ -97,7 +97,7 @@ st.markdown("""
 
 <div class="step-card">
     <div class="step-number">Step 3</div>
-    <div class="step-title">🗺️ Optimize Your Route</div>
+    <div class="step-title" style="color: purple;">🗺️ Optimize Your Route</div>
     <div class="step-description">
         Let our algorithm calculate the most efficient route between your selected attractions.
         We'll minimize walking distance and wait times to help you make the most of your day.

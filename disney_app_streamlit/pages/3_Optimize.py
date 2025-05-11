@@ -297,7 +297,7 @@ if st.button("Optimize My Route", type="primary", use_container_width=True):
                     st.markdown(f"""
                     <div class="route-step">
                         <div class="step-number">Step {i+1}</div>
-                        <div class="step-title">{ride_name}</div>
+                        <div class="step-title" style="color: purple;">{ride_name}</div>
                         <div class="step-details">
                             <p><strong>Arrival:</strong> {arrival_time_str}</p>
                             <p><strong>Wait Time:</strong> {format_duration(wait_time)} (until {wait_end_str})</p>
