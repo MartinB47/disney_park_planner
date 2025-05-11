@@ -81,8 +81,8 @@ st.write(f"Total rides loaded: {len(st.session_state.all_rides)}")
 if 'selected_rides' not in st.session_state:
     st.session_state.selected_rides = []
 
-# Main app header
-st.title("🎢 Disneyland Ride Planner")
+# # Main app header
+# st.title("🎢 Disneyland Ride Planner")
 
 # Create two columns for main layout
 left_col, right_col = st.columns([3, 2])
