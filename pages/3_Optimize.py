@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="Optimize Your Route",
     page_icon="🗺️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # Add the root directory to sys.path to enable imports from utils
@@ -31,7 +31,8 @@ if not st.session_state.get("selected_rides"):
     st.stop()
 
 # Custom CSS for better styling
-st.markdown("""
+st.markdown(
+    """
 <style>
     .main {
         padding: 2rem;
@@ -108,14 +109,19 @@ st.markdown("""
         font-size: 1.2rem;
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # Page title
 st.title("🗺️ Optimize Your Disney Route")
 
 # Display user location and selected rides
-st.write(f"Your starting location: ({st.session_state.latitude:.6f}, {st.session_state.longitude:.6f})")
+st.write(
+    f"Your starting location: ({st.session_state.latitude:.6f}, {st.session_state.longitude:.6f})"
+)
 st.write(f"Selected rides: {len(st.session_state.selected_rides)}")
+
 
 # Function to format time duration
 def format_duration(minutes):
@@ -125,68 +131,75 @@ def format_duration(minutes):
         return f"{hours} hr {mins} min"
     return f"{mins} min"
 
+
 # Function to calculate estimated time
 def calculate_time_estimate(start_time, minutes_to_add):
     return start_time + timedelta(minutes=minutes_to_add)
+
 
 # Main optimization process
 if st.button("Optimize My Route", type="primary", use_container_width=True):
     with st.spinner("Optimizing your route..."):
         # Step 1: Get ride IDs for the selected ride names
         ride_id_result = get_ride_ids_from_names(st.session_state.selected_rides)
-        
+
         if ride_id_result["status"] != "success" or ride_id_result["found_count"] == 0:
-            st.error(f"Failed to get ride IDs: {ride_id_result.get('message', 'No ride IDs found')}")
+            st.error(
+                f"Failed to get ride IDs: {ride_id_result.get('message', 'No ride IDs found')}"
+            )
             if ride_id_result.get("missing_rides"):
-                st.warning(f"Could not find IDs for these rides: {', '.join(ride_id_result['missing_rides'])}")
+                st.warning(
+                    f"Could not find IDs for these rides: {', '.join(ride_id_result['missing_rides'])}"
+                )
             st.stop()
-        
+
         # Step 2: Call the optimization API
         ride_ids = ride_id_result["ride_ids"]
         st.info(f"Found {len(ride_ids)} ride IDs. Calling optimization API...")
-        
+
         # Add a progress bar for visual feedback
         progress_bar = st.progress(0)
         for i in range(100):
             # Simulate progress while waiting for API
             time.sleep(0.02)
             progress_bar.progress(i + 1)
-        
+
         optimization_result = optimize_routes(
-            st.session_state.latitude,
-            st.session_state.longitude,
-            ride_ids
+            st.session_state.latitude, st.session_state.longitude, ride_ids
         )
-        
+
         if optimization_result["status"] != "success":
-            st.error(f"Failed to optimize route: {optimization_result.get('message', 'Unknown error')}")
+            st.error(
+                f"Failed to optimize route: {optimization_result.get('message', 'Unknown error')}"
+            )
             if optimization_result.get("details"):
                 with st.expander("Error Details"):
                     st.code(optimization_result["details"])
             st.stop()
-        
+
         # Process successful result
         route_data = optimization_result["data"]
-        
+
         # Extract the ordered rides and total time from the API response
         ordered_rides = route_data.get("orderedRides", [])
         total_time_minutes = route_data.get("totalTimeMinutes", 0)
-        
+
         # Create tabs for different views
-        tab1, tab2, tab3 = st.tabs(["Route Overview", "Detailed Itinerary", "Map View"])
-        
+        # tab1, tab2, tab3 = st.tabs(["Route Overview", "Detailed Itinerary", "Map View"])
+        tab1, tab2 = st.tabs(["Route Overview", "Detailed Itinerary"])
+
         with tab1:
             # Display summary statistics
             st.subheader("Route Summary")
-            
+
             # Extract key statistics
             total_wait_time = sum(ride.get("waitTime", 0) for ride in ordered_rides)
             avg_wait_time = total_wait_time / len(ordered_rides) if ordered_rides else 0
             ride_count = len(ordered_rides)
-            
+
             # Display statistics in cards
             st.markdown('<div class="stats-container">', unsafe_allow_html=True)
-            
+
             # # Total time
             # st.markdown(f'''
             # <div class="stat-card">
@@ -194,107 +207,130 @@ if st.button("Optimize My Route", type="primary", use_container_width=True):
             #     <div class="stat-label">Total Experience Time</div>
             # </div>
             # ''', unsafe_allow_html=True)
-            
+
             # Total wait time
-            st.markdown(f'''
+            st.markdown(
+                f"""
             <div class="stat-card">
                 <div class="stat-value">{format_duration(total_wait_time)}</div>
                 <div class="stat-label">Total Wait Time</div>
             </div>
-            ''', unsafe_allow_html=True)
-            
+            """,
+                unsafe_allow_html=True,
+            )
+
             # Average wait time
-            st.markdown(f'''
+            st.markdown(
+                f"""
             <div class="stat-card">
                 <div class="stat-value">{format_duration(avg_wait_time)}</div>
                 <div class="stat-label">Average Wait Time</div>
             </div>
-            ''', unsafe_allow_html=True)
-            
+            """,
+                unsafe_allow_html=True,
+            )
+
             # Ride count
-            st.markdown(f'''
+            st.markdown(
+                f"""
             <div class="stat-card">
                 <div class="stat-value">{ride_count}</div>
                 <div class="stat-label">Attractions</div>
             </div>
-            ''', unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-            
+            """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
             # Display route overview
             st.subheader("Route Overview")
-            
+
             if ordered_rides:
                 # Create a DataFrame for the route
                 route_df = pd.DataFrame(ordered_rides)
-                
+
                 # Rename columns for better display
-                display_df = pd.DataFrame({
-                    "Order": range(1, len(ordered_rides) + 1),
-                    "Attraction": [ride.get("name", "Unknown") for ride in ordered_rides],
-                    "Wait Time": [f"{ride.get('waitTime', 0)} min" for ride in ordered_rides]
-                })
-                
+                display_df = pd.DataFrame(
+                    {
+                        "Order": range(1, len(ordered_rides) + 1),
+                        "Attraction": [
+                            ride.get("name", "Unknown") for ride in ordered_rides
+                        ],
+                        "Wait Time": [
+                            f"{ride.get('waitTime', 0)} min" for ride in ordered_rides
+                        ],
+                    }
+                )
+
                 # Display the table
                 st.dataframe(display_df, use_container_width=True)
             else:
                 st.info("No route steps found in the optimization result.")
-        
+
         with tab2:
             st.subheader("Detailed Itinerary")
-            
+
             # Display each step in the route with rich formatting
             if ordered_rides:
                 # Get the current time to calculate actual times
                 now = datetime.now()
                 current_time = now
-                
+
                 # Estimate ride duration (since it's not provided by the API)
                 estimated_ride_duration = 10  # minutes per ride, on average
-                
+
                 for i, ride in enumerate(ordered_rides):
                     ride_name = ride.get("name", "Unknown Ride")
                     wait_time = ride.get("waitTime", 0)
-                    
+
                     # Calculate estimated times
                     wait_end_time = calculate_time_estimate(current_time, wait_time)
-                    ride_end_time = calculate_time_estimate(wait_end_time, estimated_ride_duration)
-                    
+                    ride_end_time = calculate_time_estimate(
+                        wait_end_time, estimated_ride_duration
+                    )
+
                     # Format for display
                     arrival_time_str = current_time.strftime("%I:%M %p")
                     wait_end_str = wait_end_time.strftime("%I:%M %p")
                     ride_end_str = ride_end_time.strftime("%I:%M %p")
-                    
+
                     # Calculate walking time to next attraction (estimate)
                     walking_time = 0
                     walking_distance = 0
-                    
+
                     if i < len(ordered_rides) - 1:
                         # Calculate distance between current and next ride
                         next_ride = ordered_rides[i + 1]
-                        if all(key in ride for key in ["lat", "lon"]) and all(key in next_ride for key in ["lat", "lon"]):
+                        if all(key in ride for key in ["lat", "lon"]) and all(
+                            key in next_ride for key in ["lat", "lon"]
+                        ):
                             from math import sin, cos, sqrt, atan2, radians
-                            
+
                             # Approximate radius of earth in km
                             R = 6373.0
-                            
+
                             lat1 = radians(ride.get("lat"))
                             lon1 = radians(ride.get("lon"))
                             lat2 = radians(next_ride.get("lat"))
                             lon2 = radians(next_ride.get("lon"))
-                            
+
                             dlon = lon2 - lon1
                             dlat = lat2 - lat1
-                            
-                            a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+
+                            a = (
+                                sin(dlat / 2) ** 2
+                                + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+                            )
                             c = 2 * atan2(sqrt(a), sqrt(1 - a))
-                            
+
                             walking_distance = R * c
                             # Assume average walking speed of 5 km/h or 0.083 km/min
                             walking_time = walking_distance / 0.083
-                    
+
                     # Create a styled step card
-                    st.markdown(f"""
+                    st.markdown(
+                        f"""
                     <div class="route-step">
                         <div class="step-number">Step {i+1}</div>
                         <div class="step-title" style="color: purple;">{ride_name}</div>
@@ -305,80 +341,88 @@ if st.button("Optimize My Route", type="primary", use_container_width=True):
                             <p><strong>Walking to Next:</strong> {format_duration(walking_time)} ({walking_distance:.1f} km)</p>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
-                    
+                    """,
+                        unsafe_allow_html=True,
+                    )
+
                     # Update current time for next attraction
                     current_time = calculate_time_estimate(ride_end_time, walking_time)
             else:
                 st.info("No route steps found in the optimization result.")
-        
-        with tab3:
-            st.subheader("Map View")
-            
-            # Check if we have coordinates for the rides
-            has_coordinates = all(["lat" in ride and "lon" in ride for ride in ordered_rides])
-            
-            if has_coordinates and ordered_rides:
-                # Create a map with the optimized route
-                map_data = []
-                
-                # Add starting point
-                map_data.append({
-                    "lat": st.session_state.latitude,
-                    "lon": st.session_state.longitude,
-                    "name": "Your Location (Start)"
-                })
-                
-                # Add each ride location
-                for i, ride in enumerate(ordered_rides):
-                    map_data.append({
-                        "lat": ride.get("lat"),
-                        "lon": ride.get("lon"),
-                        "name": f"{i+1}. {ride.get('name', 'Unknown Ride')}"
-                    })
-                
-                # Convert to DataFrame for map
-                map_df = pd.DataFrame(map_data)
-                
-                # Display the map with the route
-                st.map(map_df, latitude="lat", longitude="lon")
-                
-                # Display the route order as a table
-                route_order_df = pd.DataFrame({
-                    "Order": ["Start"] + [f"Stop {i+1}" for i in range(len(ordered_rides))],
-                    "Location": [map_data[0]["name"]] + [point["name"] for point in map_data[1:]]
-                })
-                
-                st.subheader("Route Order")
-                st.table(route_order_df)
-            else:
-                st.warning("Map view is not available because coordinate data is missing for some attractions.")
-                
-            # Provide option to download the itinerary
-            st.download_button(
-                label="Download Itinerary as JSON",
-                data=json.dumps(route_data, indent=2),
-                file_name="disney_optimized_route.json",
-                mime="application/json"
-            )
-    
+
+        # with tab3:
+        #     st.subheader("Map View")
+
+        #     # Check if we have coordinates for the rides
+        #     has_coordinates = all(["lat" in ride and "lon" in ride for ride in ordered_rides])
+
+        #     if has_coordinates and ordered_rides:
+        #         # Create a map with the optimized route
+        #         map_data = []
+
+        #         # Add starting point
+        #         map_data.append({
+        #             "lat": st.session_state.latitude,
+        #             "lon": st.session_state.longitude,
+        #             "name": "Your Location (Start)"
+        #         })
+
+        #         # Add each ride location
+        #         for i, ride in enumerate(ordered_rides):
+        #             map_data.append({
+        #                 "lat": ride.get("lat"),
+        #                 "lon": ride.get("lon"),
+        #                 "name": f"{i+1}. {ride.get('name', 'Unknown Ride')}"
+        #             })
+
+        #         # Convert to DataFrame for map
+        #         map_df = pd.DataFrame(map_data)
+
+        #         # Display the map with the route
+        #         st.map(map_df, latitude="lat", longitude="lon")
+
+        #         # Display the route order as a table
+        #         route_order_df = pd.DataFrame({
+        #             "Order": ["Start"] + [f"Stop {i+1}" for i in range(len(ordered_rides))],
+        #             "Location": [map_data[0]["name"]] + [point["name"] for point in map_data[1:]]
+        #         })
+
+        #         st.subheader("Route Order")
+        #         st.table(route_order_df)
+        #     else:
+        #         st.warning("Map view is not available because coordinate data is missing for some attractions.")
+
+        #     # Provide option to download the itinerary
+        #     st.download_button(
+        #         label="Download Itinerary as JSON",
+        #         data=json.dumps(route_data, indent=2),
+        #         file_name="disney_optimized_route.json",
+        #         mime="application/json"
+        #     )
+
     # Final success message
-    st.success("✅ Route optimization complete! Follow the itinerary above for the most efficient way to experience your selected attractions.")
-    
+    st.success(
+        "✅ Route optimization complete! Follow the itinerary above for the most efficient way to experience your selected attractions."
+    )
+
     # Tips for the user
     with st.expander("Tips for Your Visit"):
-        st.markdown("""
+        st.markdown(
+            """
         - **Arrive Early**: The park is less crowded in the morning.
         - **Stay Hydrated**: Bring a refillable water bottle.
         - **Take Breaks**: Schedule short breaks between attractions.
         - **Check Show Times**: Some shows have specific schedules.
         - **Use Mobile Ordering**: Save time by ordering food in advance.
-        """)
+        """
+        )
 
 else:
     # Display instructions when the page loads
-    st.info("Click the 'Optimize My Route' button to generate the most efficient path through your selected attractions.")
-    
+    st.info(
+        "Click the 'Optimize My Route' button to generate the most efficient path through your selected attractions."
+    )
+
     # Show selected rides
     st.subheader("Your Selected Rides")
     for ride in st.session_state.selected_rides:
