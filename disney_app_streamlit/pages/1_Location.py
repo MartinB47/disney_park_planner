@@ -1,88 +1,87 @@
 import streamlit as st
 import json
-import sys
-import os
+import pandas as pd
+import plotly.express as px
+from streamlit_js_eval import get_geolocation  # pip install streamlit_js_eval
 
-# Set page configuration at the very beginning
-st.set_page_config(
-    page_title="Location Setup",
-    page_icon="📍",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.title("Disneyland Rides Map")
 
-# Add the root directory to sys.path to enable imports from utils
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.session import initialize_session_state
+# — load rides.json (must include rideId, name, lat, lon, description) —
+with open("rides_with_descriptions.json", "r") as f:
+    rides = json.load(f)
+df = pd.DataFrame(rides)
 
-# Initialize session state
-initialize_session_state()
+# — keep user_loc in session state —
+if "user_loc" not in st.session_state:
+    st.session_state.user_loc = None
 
-# Page title
-st.title("📍 Set Your Location")
-st.write("Please provide your current location to help plan your visit.")
-
-# Create two columns for the layout
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    # Location input
-    st.subheader("Enter Coordinates")
-    latitude = st.number_input(
-        "Latitude", 
-        min_value=-90.0, 
-        max_value=90.0, 
-        value=st.session_state.get("latitude", 33.8121),  # Default to Disneyland Anaheim
-        format="%.6f",
-        help="Enter your latitude coordinate"
-    )
-    
-    longitude = st.number_input(
-        "Longitude", 
-        min_value=-180.0, 
-        max_value=180.0, 
-        value=st.session_state.get("longitude", -117.9190),  # Default to Disneyland Anaheim
-        format="%.6f",
-        help="Enter your longitude coordinate"
-    )
-    
-    # Save button
-    if st.button("Save Location", use_container_width=True):
-        st.session_state.latitude = latitude
-        st.session_state.longitude = longitude
+# — prompt once for geolocation —
+if st.session_state.user_loc is None:
+    loc = get_geolocation()
+    if loc:
+        lat = loc["coords"]["latitude"]
+        lon = loc["coords"]["longitude"]
+        st.session_state.user_loc = (lat, lon)
         st.session_state.location_set = True
-        st.success("Location saved! You can now proceed to select rides.")
+        st.session_state.latitude = lat
+        st.session_state.longitude = lon
         
-        # Create location JSON
-        location_json = {
-            "latitude": latitude,
-            "longitude": longitude
-        }
-        st.session_state.location_json = json.dumps(location_json, indent=2)
+# — build map, centering & dropping marker if we have coords —
+def make_map(user_loc=None):
+    fig = px.scatter_mapbox(
+        df,
+        lat="lat",
+        lon="lon",
+        hover_name="name",
+        custom_data=["description"],      # supply description without label
+        zoom=16,
+        height=600,
+        color_discrete_sequence=["red"],
+    )
+    fig.update_traces(
+    marker=dict(size=12),
+    selector=dict(mode="markers")     # only the ride dots (not your blue user‐dot)
+    )
 
-with col2:
-    # Display map with the location
-    if st.session_state.get("latitude") and st.session_state.get("longitude"):
-        st.subheader("Your Location")
-        map_data = {
-            "lat": [st.session_state.latitude],
-            "lon": [st.session_state.longitude]
-        }
-        st.map(map_data)
-        
-        # Display the location as JSON
-        st.subheader("Location Data")
-        if st.session_state.get("location_json"):
-            st.code(st.session_state.location_json, language="json")
+    # use a hovertemplate to show only name & description,
+    # and left-align both lines
+    fig.update_traces(
+        hovertemplate=(
+            "<b>%{hovertext}</b><br>%{customdata[0]}<extra></extra>"
+        ),
+        hoverlabel=dict(align="left")
+    )
 
-# Navigation guidance
-st.markdown("---")
-if st.session_state.get("location_set"):
-    st.info("✅ Location set! Click on 'Rides' in the sidebar to continue.")
-else:
-    st.warning("Please set your location before proceeding to ride selection.")
+    if user_loc:
+        lat, lon = user_loc
+        fig.update_layout(mapbox_center={"lat": lat, "lon": lon})
+        fig.add_scattermapbox(
+            lat=[lat],
+            lon=[lon],
+            mode="markers+text",
+            marker=dict(size=12, color="blue"),
+            textposition="top right",
+            showlegend=False,
+            name="",
+            hovertemplate="You are here!<extra></extra>",
+        )
 
-# Next page button
-if st.session_state.get("location_set"):
-    if st.button("Continue to Ride Selection →", use_container_width=True):
-        st.switch_page("pages/2_Rides.py")
+    fig.update_layout(
+        mapbox_style="open-street-map",
+        margin=dict(l=0, r=0, t=0, b=0),
+        shapes=[                          # thin black border
+            dict(
+                type="rect",
+                xref="paper",
+                yref="paper",
+                x0=0, y0=0, x1=1, y1=1,
+                line=dict(color="black", width=3),
+                fillcolor="rgba(0,0,0,0)",
+            )
+        ],
+    )
+
+    return fig
+
+# — render the map —
+st.plotly_chart(make_map(st.session_state.user_loc), use_container_width=True)
