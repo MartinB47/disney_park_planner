@@ -1,1 +1,1 @@
-web: streamlit run app.py --server.port $PORT --server.headless true
+web: streamlit run disney_app_streamlit/app.py
