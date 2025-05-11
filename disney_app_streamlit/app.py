@@ -58,6 +58,7 @@ st.markdown("""
         border-radius: 0.5rem;
         background-color: #f0f7ff;
         text-align: center;
+        color: #1a1a1a;
     }
     .feature-icon {
         font-size: 2rem;
