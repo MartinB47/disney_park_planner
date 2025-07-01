@@ -18,6 +18,18 @@ An interactive web app that helps visitors optimize their day at Disney parks. I
 
 ---
 
+## 📸 Screenshots
+
+<table>
+<tr>
+<td><img src="docs/disneyland_rides_map.png" alt="Disneyland Rides Map" width="300"/></td>
+<td><img src="docs/find_select_rides.png" alt="Find and Select Rides" width="300"/></td>
+<td><img src="docs/route_overview.png" alt="Route Overview" width="300"/></td>
+</tr>
+</table>
+
+---
+
 ## 🏗️ Architecture (High Level)
 
 ```
@@ -117,9 +129,3 @@ streamlit run Home.py
 The app opens automatically at **[http://localhost:8501](http://localhost:8501)**.
 
 ---
-
-## 🙌 Team
-
-| Member           | Role                         |
-| ---------------- | ---------------------------- |
-| *Add names here* | Full‑stack / AWS integrators |
